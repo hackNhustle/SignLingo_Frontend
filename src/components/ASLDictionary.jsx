@@ -1,103 +1,129 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Grid, List, Play, Volume2, ChevronRight, X } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { Search, BookOpen, Grid, List, Play, Volume2, X } from 'lucide-react';
 import axios from 'axios';
+import aslVideoMapping from '../utils/asl_video_mapping.json';
+import islDictionaryCsv from '../utils/isl_dictionary.csv?raw';
 
-const API_URL = 'http://localhost:5002';
+const getCloudinaryUrl = (id) =>
+  id ? `https://res.cloudinary.com/donbtthvf/video/upload/asl_videos/${id}.mp4` : '';
 
 const ASLDictionary = () => {
+  const { language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('common_words');
-  const [searchResults, setSearchResults] = useState([]);
-  const [categoryWords, setCategoryWords] = useState([]);
+  const [allWords, setAllWords] = useState([]);
+  const [filteredWords, setFilteredWords] = useState([]);
   const [selectedWord, setSelectedWord] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [isLoading, setIsLoading] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoError, setVideoError] = useState('');
 
-  // Load categories and common words on mount
+
+  // Load dictionary based on language
   useEffect(() => {
-    console.log('Component mounted - loading categories and common words');
-    loadCategories();
-    loadCategoryWords('common_words');
-  }, []);
-
-  // Load category words when category changes
-  useEffect(() => {
-    console.log('Category changed to:', selectedCategory);
-    if (selectedCategory && selectedCategory !== 'all') {
-      loadCategoryWords(selectedCategory);
-    } else if (selectedCategory === 'all') {
-      loadAllWords();
-    }
-  }, [selectedCategory]);
-
-  const loadCategories = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/asl/dictionary/categories`);
-      setCategories(response.data.categories);
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
-  };
-
-  const loadCategoryWords = async (category) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/asl/dictionary/category/${category}`);
-      setCategoryWords(response.data.words);
-      setSearchResults([]);
-    } catch (error) {
-      console.error('Error loading category words:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadAllWords = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/asl/dictionary/all?limit=500`);
-      // Filter out alphabet and numbers to show mainly common words, animals, fruits, etc.
-      const filteredWords = response.data.words.filter(
-        word => !['alphabet', 'numbers'].includes(word.category)
-      );
-      console.log('Total words from API:', response.data.words.length);
-      console.log('Filtered words:', filteredWords.length);
-      console.log('Sample filtered words:', filteredWords.slice(0, 5));
-      setCategoryWords(filteredWords);
-      setSearchResults([]);
-    } catch (error) {
-      console.error('Error loading all words:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/asl/dictionary/search`, {
-        params: {
-          q: searchQuery,
-          category: selectedCategory
+    async function fetchASLDictionaryStrict() {
+      setIsLoading(true);
+      let words = [];
+      let fetched = false;
+      const endpoints = [
+        'http://localhost:5002/asl/dictionary/all?limit=2000',
+        'http://localhost:5002/api/v1/asl/dictionary/all?limit=2000',
+      ];
+      for (const url of endpoints) {
+        try {
+          const res = await axios.get(url);
+          if (res.data && Array.isArray(res.data.words)) {
+            words = res.data.words;
+            fetched = true;
+            break;
+          }
+        } catch (e) {
+          // Try next endpoint
         }
-      });
-      setSearchResults(response.data.results);
-      setCategoryWords([]);
-    } catch (error) {
-      console.error('Error searching:', error);
-    } finally {
+      }
+      if (!fetched) {
+        // Fallback to local JSON
+        words = Object.keys(aslVideoMapping).flatMap((cat) =>
+          Object.entries(aslVideoMapping[cat] || {}).map(([word, videoId]) => ({
+            word,
+            videoId,
+            category: cat,
+            videoUrl: getCloudinaryUrl(videoId),
+          }))
+        );
+      }
+      // Normalize all entries
+      const parsed = words.map((entry) => {
+        const word = entry.word || entry.character;
+        let videoUrl = entry.video_url;
+        let videoId = entry.video_id || entry.videoId;
+        if (!videoUrl && videoId) videoUrl = getCloudinaryUrl(videoId);
+        return {
+          word,
+          videoUrl,
+          videoId,
+          category: entry.category,
+        };
+      }).filter((entry) => !!entry.word);
+      setAllWords(parsed);
+      setFilteredWords(parsed);
       setIsLoading(false);
     }
+
+    function fetchISLDictionary() {
+      setIsLoading(true);
+      try {
+        const data = islDictionaryCsv;
+        const lines = data.split(/\r?\n/);
+        const parsed = lines
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .map(line => {
+            const match = line.match(/^(.+?),([a-zA-Z0-9_-]+)$/);
+            if (match) {
+              const word = match[1].trim();
+              const videoId = match[2].trim();
+              if (word.toLowerCase() === 'word' && videoId.toLowerCase() === 'videoid') {
+                return null;
+              }
+              return { word, videoId, videoUrl: `https://www.youtube.com/embed/${videoId}` };
+            }
+            return null;
+          })
+          .filter(entry => entry !== null && !!entry.word && (!!entry.videoId || !!entry.videoUrl));
+        setAllWords(parsed);
+        setFilteredWords(parsed);
+      } catch {
+        setAllWords([]);
+        setFilteredWords([]);
+      }
+      setIsLoading(false);
+    }
+
+    if (language === 'ASL') {
+      fetchASLDictionaryStrict();
+    } else {
+      fetchISLDictionary();
+    }
+  }, [language]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setFilteredWords(allWords);
+      return;
+    }
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = allWords.filter((entry) => (entry.word || '').toLowerCase().includes(query));
+    setFilteredWords(filtered);
   };
 
   const playWordVideo = (word) => {
+    setVideoError('');
     setSelectedWord(word);
     setShowVideoModal(true);
+    console.log('selectedWord', word);
   };
 
   const speakWord = (word) => {
@@ -176,7 +202,7 @@ const ASLDictionary = () => {
           className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
         >
           <Play className="w-4 h-4" />
-          Watch Sign
+          {language === 'ASL' ? 'Watch Sign' : 'Watch Video'}
         </button>
       </div>
     </div>
@@ -184,10 +210,10 @@ const ASLDictionary = () => {
 
   const VideoModal = () => {
     if (!showVideoModal || !selectedWord) return null;
-
+    const videoUrl = selectedWord.videoUrl;
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="asl-video-modal bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
           <div className="p-6 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 capitalize">{selectedWord.word}</h2>
@@ -202,16 +228,21 @@ const ASLDictionary = () => {
           </div>
           <div className="p-6">
             <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-              <video
-                src={selectedWord.video_url.startsWith('http') ? selectedWord.video_url : `${API_URL}${selectedWord.video_url}`}
-                controls
-                autoPlay
-                loop
-                className="w-full h-full object-contain"
-              >
-                Your browser does not support the video tag.
-              </video>
+              {language === 'ASL' ? (
+                <ASLVideoPlayer videoUrl={videoUrl} word={selectedWord.word} />
+              ) : (
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={videoUrl}
+                  title={selectedWord.word}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
             </div>
+            {videoError ? <p className="mt-3 text-sm text-red-600">{videoError}</p> : null}
             <div className="mt-6 flex items-center gap-4">
               <button
                 onClick={() => speakWord(selectedWord.word)}
@@ -222,8 +253,10 @@ const ASLDictionary = () => {
               </button>
               <button
                 onClick={() => {
-                  const video = document.querySelector('video');
-                  if (video) video.currentTime = 0;
+                  if (language === 'ASL') {
+                    const video = document.querySelector('.asl-video-modal video');
+                    if (video) video.currentTime = 0;
+                  }
                 }}
                 className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors font-medium"
               >
@@ -236,8 +269,67 @@ const ASLDictionary = () => {
       </div>
     );
   };
+// Video diagnostics and fallback UI
+function ASLVideoPlayer({ videoUrl, word }) {
+  const [error, setError] = useState(false);
+  const [diagnostic, setDiagnostic] = useState('');
+  console.log('ASLVideoPlayer:', { word, videoUrl });
+  if (!videoUrl || videoUrl === '' || typeof videoUrl !== 'string') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+        <div>Video unavailable for this word (no videoUrl)</div>
+        <div className="text-xs text-red-300">videoUrl: {String(videoUrl)}</div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+        <div>Video unavailable for this word (video error)</div>
+        {diagnostic && <div className="text-xs text-red-300">{diagnostic}</div>}
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs"
+        >
+          Open video in new tab
+        </a>
+      </div>
+    );
+  }
+  return (
+    <video
+      src={videoUrl}
+      controls
+      autoPlay
+      muted
+      playsInline
+      preload="metadata"
+      className="w-full h-full object-contain"
+      onError={e => {
+        setError(true);
+        setDiagnostic('onError: Could not load video.');
+        console.error('Video error', { word, videoUrl, event: e });
+      }}
+      onLoadedData={() => {
+        setDiagnostic('onLoadedData: Video loaded.');
+        console.log('Video loaded', { word, videoUrl });
+      }}
+      onCanPlay={() => {
+        setDiagnostic('onCanPlay: Video can play.');
+        console.log('Video can play', { word, videoUrl });
+      }}
+    >
+      Your browser does not support the video tag.
+    </video>
+  );
+}
 
-  const displayWords = searchResults.length > 0 ? searchResults : categoryWords;
+  const displayWords = filteredWords;
+
+  // Show fallback if no words loaded
+  const noWordsLoaded = !isLoading && (!displayWords || displayWords.length === 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
@@ -246,7 +338,7 @@ const ASLDictionary = () => {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3 mb-6">
             <BookOpen className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-3xl font-bold text-gray-800">ASL Dictionary</h1>
+            <h1 className="text-3xl font-bold text-gray-800">{language} Dictionary</h1>
           </div>
 
           {/* Search Bar */}
@@ -257,7 +349,7 @@ const ASLDictionary = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for words... (e.g., hello, cat, run)"
+                placeholder={`Search for words... (e.g., hello, cat, run)`}
                 className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-lg"
               />
               <button
@@ -269,64 +361,28 @@ const ASLDictionary = () => {
             </div>
           </form>
 
-          {/* Categories & View Toggle */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                  selectedCategory === 'all'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Categories
-              </button>
-              {categories && categories.length > 0 ? (
-                categories.map((cat) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      console.log('Clicked category:', cat.name);
-                      setSelectedCategory(cat.name);
-                    }}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap text-sm ${
-                      selectedCategory === cat.name
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    title={`${cat.display_name}: ${cat.count} words`}
-                  >
-                    {cat.display_name} <span className="text-xs ml-1">({cat.count})</span>
-                  </button>
-                ))
-              ) : (
-                <div className="text-gray-500 text-sm">Loading categories...</div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Grid className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <List className="w-5 h-5" />
-              </button>
-            </div>
+          {/* View Toggle Only */}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Grid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <List className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -337,21 +393,26 @@ const ASLDictionary = () => {
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
           </div>
-        ) : displayWords.length > 0 ? (
+        ) : noWordsLoaded ? (
+          <div className="text-center py-20">
+            <BookOpen className="w-24 h-24 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-2xl font-semibold text-gray-600 mb-2">
+              No {language} words loaded from API or local mapping
+            </h3>
+            <p className="text-gray-500">
+              Please check your backend API, network, and browser console for errors.<br />
+              If you see this message, the frontend did not receive any usable data.
+            </p>
+          </div>
+        ) : (
           <>
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">
-                  {searchResults.length > 0
-                    ? `Search Results (${searchResults.length})`
-                    : `${selectedCategory.replace('_', ' ').toUpperCase()} (${displayWords.length} words)`}
+                  {`${language} DICTIONARY (${displayWords.length} words)`}
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Category: {selectedCategory} | Display Words: {displayWords.length} | Category Words: {categoryWords.length}
-                </p>
               </div>
             </div>
-
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {displayWords.map((word, index) => (
@@ -366,18 +427,6 @@ const ASLDictionary = () => {
               </div>
             )}
           </>
-        ) : (
-          <div className="text-center py-20">
-            <BookOpen className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold text-gray-600 mb-2">
-              {searchQuery ? 'No results found' : 'Select a category or search for words'}
-            </h3>
-            <p className="text-gray-500">
-              {searchQuery
-                ? 'Try searching for different words'
-                : 'Start exploring ASL signs by browsing categories or searching'}
-            </p>
-          </div>
         )}
       </div>
 

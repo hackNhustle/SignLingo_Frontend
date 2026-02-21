@@ -1,18 +1,38 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
 import BottomNav from './BottomNav';
 import { motion, useInView } from 'motion/react';
-import { learningAPI } from '../services/api';
+import axios from 'axios';
+import islDictionaryCsv from '../utils/isl_dictionary.csv?raw';
 
-const API_URL = 'http://localhost:5002/api/v1';
+import aslVideoMapping from '../utils/asl_video_mapping.json';
 
 interface DictionaryEntry {
   word: string;
   videoId?: string;
   videoUrl?: string;
 }
+
+const getCloudinaryUrl = (id: string | undefined) =>
+  id ? `https://res.cloudinary.com/donbtthvf/video/upload/asl_videos/${id}.mp4` : undefined;
+
+const normalizeWord = (value: string) => value.trim().toLowerCase();
+
+const buildAslMappingLookup = (): Map<string, string> => {
+  const lookup = new Map<string, string>();
+  const categories = Object.values(aslVideoMapping as Record<string, Record<string, string>>);
+
+  categories.forEach((category) => {
+    Object.entries(category || {}).forEach(([word, id]) => {
+      lookup.set(normalizeWord(word), id);
+    });
+  });
+
+  return lookup;
+};
 
 export default function Dictionary() {
   const navigate = useNavigate();
@@ -22,63 +42,89 @@ export default function Dictionary() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLetter, setSelectedLetter] = useState('ALL');
   const [selectedEntry, setSelectedEntry] = useState<DictionaryEntry | null>(null);
-
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
   useEffect(() => {
-    if (language === 'ASL') {
-      learningAPI.getAlphabetList()
-        .then(res => {
-          const data = res.data;
-          const parsed: DictionaryEntry[] = (data.alphabet || [])
-            .map((entry: any) => {
-              return {
-                word: entry.character,
-                // Video URL will be fetched on selection or if provided in list
-                videoUrl: entry.asl_video_url
-              };
-            });
-
-          setEntries(parsed);
-          setFilteredEntries(parsed);
-        })
-        .catch(() => {
-          setEntries([]);
-          setFilteredEntries([]);
-        });
-      return;
+    async function fetchASLDictionaryStrict() {
+      // 1. Try main endpoint
+      let words: any[] = [];
+      let fetched = false;
+      const endpoints = [
+        'http://localhost:5002/asl/dictionary/all?limit=2000',
+        'http://localhost:5002/api/v1/asl/dictionary/all?limit=2000',
+      ];
+      for (const url of endpoints) {
+        try {
+          const res = await axios.get(url);
+          if (res.data && Array.isArray(res.data.words)) {
+            words = res.data.words;
+            fetched = true;
+            break;
+          }
+        } catch (e) {
+          // Try next endpoint
+        }
+      }
+      if (!fetched) {
+        // 2. Fallback to local JSON
+        words = Object.keys(aslVideoMapping).flatMap((cat) =>
+          Object.entries(aslVideoMapping[cat] || {}).map(([word, videoId]) => ({
+            word,
+            videoId,
+            category: cat,
+            videoUrl: getCloudinaryUrl(videoId),
+            unavailable: !videoId,
+          }))
+        );
+      }
+      // 3. Normalize all entries
+      const parsed: DictionaryEntry[] = words.map((entry: any) => {
+        const word = entry.word || entry.character;
+        let videoUrl = entry.video_url;
+        let videoId = entry.video_id || entry.videoId;
+        if (!videoUrl && videoId) videoUrl = getCloudinaryUrl(videoId);
+        return {
+          word,
+          videoUrl,
+          videoId,
+          category: entry.category,
+        };
+      }).filter((entry) => !!entry.word);
+      setEntries(parsed);
+      setFilteredEntries(parsed);
     }
 
-    const dictionaryPath = '/src/utils/isl_dictionary.csv';
-
-    fetch(dictionaryPath)
-      .then(res => res.text())
-      .then(data => {
-        const lines = data.split(/\r?\n/);
+    async function fetchISLDictionary() {
+      try {
+        const lines = islDictionaryCsv.split(/\r?\n/);
         const parsed: DictionaryEntry[] = lines
-          .map(line => line.trim())
-          .filter(line => line.length > 0)
-          .map(line => {
-            const match = line.match(/^(.+?),([a-zA-Z0-9_-]+)$/);
-            if (match) {
-              const word = match[1].trim();
-              const videoId = match[2].trim();
-              if (word.toLowerCase() === 'word' && videoId.toLowerCase() === 'videoid') {
-                return null;
-              }
-              return { word, videoId } as DictionaryEntry;
-            }
-            return null;
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0)
+          .map((line: string) => {
+            const lastComma = line.lastIndexOf(',');
+            if (lastComma <= 0) return null;
+
+            const word = line.slice(0, lastComma).trim();
+            const videoId = line.slice(lastComma + 1).trim();
+            if (!word || !videoId) return null;
+            if (word.toLowerCase() === 'word' && videoId.toLowerCase() === 'videoid') return null;
+
+            return { word, videoId } as DictionaryEntry;
           })
-          .filter((entry): entry is DictionaryEntry => entry !== null && !!entry.word && (!!entry.videoId || !!entry.videoUrl));
+          .filter((entry): entry is DictionaryEntry => entry !== null);
 
         setEntries(parsed);
         setFilteredEntries(parsed);
-      })
-      .catch(() => {
+      } catch {
         setEntries([]);
         setFilteredEntries([]);
-      });
+      }
+    }
+    if (language === 'ASL') {
+      fetchASLDictionaryStrict();
+    } else {
+      fetchISLDictionary();
+    }
   }, [language]);
 
   useEffect(() => {
@@ -97,6 +143,9 @@ export default function Dictionary() {
     setFilteredEntries(filtered);
   }, [searchQuery, selectedLetter, entries]);
 
+  if (selectedEntry) {
+    console.log('RENDER selectedEntry:', selectedEntry);
+  }
   return (
     <div className="w-full max-w-md bg-background-light dark:bg-background-dark relative flex flex-col safe-h-screen overflow-hidden">
       <header className="flex flex-col gap-3 px-6 py-3 sticky top-0 z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
@@ -117,17 +166,10 @@ export default function Dictionary() {
             <span className="font-semibold">Back to list</span>
           </button>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 capitalize">{selectedEntry.word}</h3>
+          {/* selectedEntry debug removed from render */}
           <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-lg bg-black">
             {language === 'ASL' ? (
-              <video
-                src={selectedEntry.videoUrl}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full object-contain"
-              >
-                Your browser does not support the video tag.
-              </video>
+              <ASLVideoPlayer videoUrl={selectedEntry.videoUrl} word={selectedEntry.word} />
             ) : (
               <iframe
                 width="100%"
@@ -216,3 +258,63 @@ export default function Dictionary() {
     </div>
   );
 }
+
+// Video player with error UI for ASL videos
+function ASLVideoPlayer({ videoUrl, word }: { videoUrl?: string, word?: string }) {
+  const [error, setError] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<string>('');
+  console.log('ASLVideoPlayer:', { word, videoUrl });
+  if (!videoUrl || videoUrl === '' || typeof videoUrl !== 'string') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+        <div>Video unavailable for this word (no videoUrl)</div>
+        <div className="text-xs text-red-300">videoUrl: {String(videoUrl)}</div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+        <div>Video unavailable for this word (video error)</div>
+        {diagnostic && <div className="text-xs text-red-300">{diagnostic}</div>}
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs"
+        >
+          Open video in new tab
+        </a>
+      </div>
+    );
+  }
+  return (
+    <video
+      src={videoUrl}
+      controls
+      autoPlay
+      muted
+      playsInline
+      preload="metadata"
+      className="w-full h-full object-contain"
+      onError={e => {
+        setError(true);
+        setDiagnostic('onError: Could not load video.');
+        console.error('Video error', { word, videoUrl, event: e });
+      }}
+      onLoadedData={() => {
+        setDiagnostic('onLoadedData: Video loaded.');
+        console.log('Video loaded', { word, videoUrl });
+      }}
+      onCanPlay={() => {
+        setDiagnostic('onCanPlay: Video can play.');
+        console.log('Video can play', { word, videoUrl });
+      }}
+    >
+      Your browser does not support the video tag.
+    </video>
+  );
+}
+
+
+

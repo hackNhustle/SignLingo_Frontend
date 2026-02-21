@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { learningAPI } from '../services/api';
 
+const API_URL = 'http://localhost:5002';
+
 const ASLVideoViewer = ({ letter }) => {
   const [videoData, setVideoData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +47,10 @@ const ASLVideoViewer = ({ letter }) => {
     );
   }
 
-  if (error || !videoData) {
+  const resolvedVideoUrl =
+    videoData?.asl_video_url || (videoData?.video_url ? `${API_URL}${videoData.video_url}` : '');
+
+  if (error || !videoData || !resolvedVideoUrl) {
     return (
       <div className="w-full aspect-video rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
         <div className="text-center text-white p-6">
@@ -60,7 +65,7 @@ const ASLVideoViewer = ({ letter }) => {
     <div className="w-full rounded-lg overflow-hidden shadow-lg">
       <video
         ref={videoRef}
-        src={`${API_URL}${videoData.video_url}`}
+        src={resolvedVideoUrl}
         controls
         autoPlay
         loop
