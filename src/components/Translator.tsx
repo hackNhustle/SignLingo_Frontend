@@ -98,7 +98,7 @@ export default function Translator() {
     prevListeningRef.current = listening;
   }, [listening, transcript, isProcessing]);
 
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (listening) {
       SpeechRecognition.stopListening();
     } else {
@@ -106,7 +106,13 @@ export default function Translator() {
       setTextInput('');
       setShowTextInput(false);
       setError('');
-      SpeechRecognition.startListening({ language: 'en-US' });
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        SpeechRecognition.startListening({ language: 'en-US' });
+      } catch (err) {
+        console.error('Microphone permission error:', err);
+        setError('Microphone access denied. Please allow microphone access in your browser settings.');
+      }
     }
   };
 
