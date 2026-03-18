@@ -106,7 +106,7 @@ export default function Translator() {
       setTextInput('');
       setShowTextInput(false);
       setError('');
-      SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+      SpeechRecognition.startListening({ language: 'en-US' });
     }
   };
 
@@ -168,12 +168,12 @@ export default function Translator() {
 
           {/* Connection Status */}
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 shadow-lg border dark-gradient ${isProcessing ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-300 border-yellow-500/30' :
-              error ? 'bg-red-500/20 text-red-600 dark:text-red-300 border-red-500/30' :
-                'bg-green-500/20 text-green-600 dark:text-green-300 border-green-500/30'
+            error ? 'bg-red-500/20 text-red-600 dark:text-red-300 border-red-500/30' :
+              'bg-green-500/20 text-green-600 dark:text-green-300 border-green-500/30'
             }`}>
             <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-yellow-500 dark:bg-yellow-400 animate-pulse' :
-                error ? 'bg-red-500 dark:bg-red-400' :
-                  'bg-green-500 dark:bg-green-400'
+              error ? 'bg-red-500 dark:bg-red-400' :
+                'bg-green-500 dark:bg-green-400'
               }`} />
             {isProcessing ? 'Processing...' : error ? 'Error' : 'Connected'}
           </div>
@@ -300,8 +300,8 @@ export default function Translator() {
                 onClick={handleMicClick}
                 disabled={isProcessing}
                 className={`relative z-10 flex h-20 w-20 cursor-pointer items-center justify-center rounded-full ${isProcessing ? 'bg-yellow-500' :
-                    listening ? 'bg-red-500' :
-                      'bg-primary'
+                  listening ? 'bg-red-500' :
+                    'bg-primary'
                   } text-white shadow-lg shadow-primary/40 hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed`}
               >
                 <span className="material-symbols-outlined text-3xl">
