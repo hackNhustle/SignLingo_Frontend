@@ -2,11 +2,17 @@ import axios from 'axios';
 
 const MODEL_BASE_URL_KEY = 'sign_model_base_url';
 const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5002/api/v1';
-const DEFAULT_MODEL_BASE_URL = '/model-api';
+const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://isl-alphabet-detection.onrender.com';
 
 const getStoredModelBaseUrl = () => {
   try {
-    return localStorage.getItem(MODEL_BASE_URL_KEY) || DEFAULT_MODEL_BASE_URL;
+    const stored = localStorage.getItem(MODEL_BASE_URL_KEY);
+    // If the browser cached a local broken proxy model, erase it and use the .env Cloud default
+    if (stored && (stored === '/model-api' || stored === '/asl-api')) {
+      localStorage.removeItem(MODEL_BASE_URL_KEY);
+      return DEFAULT_MODEL_BASE_URL;
+    }
+    return stored || DEFAULT_MODEL_BASE_URL;
   } catch (_e) {
     return DEFAULT_MODEL_BASE_URL;
   }
@@ -111,7 +117,7 @@ export const convertAPI = {
     const targetBase = modelUrl || MODEL_BASE_URL;
     return axios.post(`${targetBase}/predict`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 10000,
+      timeout: 60000, // Increased to 60s to handle fresh Render cold starts
     });
   },
   speechToSign: (data) => api.post('/convert/speech-to-sign', data),
@@ -215,11 +221,51 @@ export const apiHelpers = {
   // Handle API errors
   handleError: (error) => {
     if (error.response) {
-      return error.response.data.error || 'Server error occurred';
+      const status = error.response.status;
+      const requestUrl = String(error.config?.url || '');
+      const responseMessage =
+        error.response.data?.error ||
+        error.response.data?.message ||
+        error.response.data?.detail;
+
+      const isSignRecognitionRequest =
+        requestUrl.includes('/model-api/') ||
+        requestUrl.includes('/asl-api/') ||
+        requestUrl.includes('isl-alphabet-detection.onrender.com') ||
+        requestUrl.includes('asl-alphabet-detection.onrender.com');
+
+      if (isSignRecognitionRequest && status === 500) {
+        const modelLabel = requestUrl.includes('/asl-api/') ? 'ASL' : 'ISL';
+        const port = requestUrl.includes('/asl-api/') ? '8005' : '8003';
+        return `${modelLabel} sign recognition service error. Make sure the model server is running on port ${port} and check its backend logs.`;
+      }
+
+      if (status === 404) {
+        return 'Requested API route was not found';
+      }
+
+      if (status >= 500) {
+        return responseMessage || `Server error occurred (${status})`;
+      }
+
+      return responseMessage || `Request failed (${status})`;
     } else if (error.request) {
+      const requestUrl = String(error.config?.url || '');
+      const isSignRecognitionRequest =
+        requestUrl.includes('/model-api/') ||
+        requestUrl.includes('/asl-api/') ||
+        requestUrl.includes('isl-alphabet-detection.onrender.com') ||
+        requestUrl.includes('asl-alphabet-detection.onrender.com');
+
+      if (isSignRecognitionRequest) {
+        const modelLabel = requestUrl.includes('/asl-api/') ? 'ASL' : 'ISL';
+        const port = requestUrl.includes('/asl-api/') ? '8005' : '8003';
+        return `${modelLabel} sign recognition service is unreachable. Start the model server on port ${port}.`;
+      }
+
       return 'Network error - please check your connection';
     } else {
-      return 'An unexpected error occurred';
+      return error.message || 'An unexpected error occurred';
     }
   }
 };

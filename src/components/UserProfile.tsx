@@ -306,7 +306,7 @@ export default function UserProfile({ darkMode, setDarkMode }: { darkMode: boole
         </div>
       </header>
 
-      <main className="flex flex-col gap-8 px-6 pt-2">
+      <main className="relative z-10 flex flex-col gap-8 px-6 pt-2">
         {/* Profile Header */}
         <section className="flex flex-col items-center gap-4">
           <div className="relative group">

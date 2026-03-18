@@ -51,6 +51,7 @@ const AnimatedContent: React.FC<AnimatedContentProps> = ({
     const el = ref.current;
     if (!el) return;
 
+    const isSmallViewport = window.innerWidth < 768;
     let scrollerTarget: Element | string | null = container || document.getElementById('snap-main-container') || null;
 
     if (typeof scrollerTarget === 'string') {
@@ -64,8 +65,7 @@ const AnimatedContent: React.FC<AnimatedContentProps> = ({
     gsap.set(el, {
       [axis]: offset,
       scale,
-      opacity: animateOpacity ? initialOpacity : 1,
-      visibility: 'visible'
+      autoAlpha: animateOpacity ? initialOpacity : 1,
     });
 
     const tl = gsap.timeline({
@@ -90,10 +90,17 @@ const AnimatedContent: React.FC<AnimatedContentProps> = ({
     tl.to(el, {
       [axis]: 0,
       scale: 1,
-      opacity: 1,
+      autoAlpha: 1,
       duration,
       ease
     });
+
+    if (isSmallViewport) {
+      tl.play();
+      return () => {
+        tl.kill();
+      };
+    }
 
     const st = ScrollTrigger.create({
       trigger: el,
@@ -127,7 +134,7 @@ const AnimatedContent: React.FC<AnimatedContentProps> = ({
   ]);
 
   return (
-    <div ref={ref} className={`invisible ${className}`} {...props}>
+    <div ref={ref} className={className} {...props}>
       {children}
     </div>
   );
