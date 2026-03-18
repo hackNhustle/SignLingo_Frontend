@@ -216,7 +216,7 @@ export default function ConnectionTest() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <h3 className="font-medium text-gray-700 mb-2">Backend Server (v1)</h3>
-              <p className="text-gray-600">URL: http://localhost:5002/api/v1</p>
+              <p className="text-gray-600">URL: {import.meta.env.VITE_API_BASE_URL || 'https://signlingo-backend-ei3t.onrender.com/api/v1'}</p>
               <p className="text-gray-600">Status: {connectionStatus.backend}</p>
             </div>
             <div>

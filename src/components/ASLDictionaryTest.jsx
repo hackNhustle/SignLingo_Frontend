@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5002';
+const API_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '') : 'https://signlingo-backend-ei3t.onrender.com';
 
 const ASLDictionaryTest = () => {
   const [tests, setTests] = useState([
@@ -86,7 +86,7 @@ const ASLDictionaryTest = () => {
                     Test
                   </button>
                 </div>
-                
+
                 <div className="text-sm text-gray-500 mb-2">
                   <code className="bg-gray-100 px-2 py-1 rounded">GET {test.endpoint}</code>
                 </div>
@@ -120,7 +120,7 @@ const ASLDictionaryTest = () => {
               Open ASL Dictionary
             </a>
             <a
-              href="http://localhost:5002/docs/"
+              href={`${import.meta.env.VITE_API_BASE_URL || 'https://signlingo-backend-ei3t.onrender.com/api/v1'}/`}
               target="_blank"
               rel="noopener noreferrer"
               className="p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-center font-medium"

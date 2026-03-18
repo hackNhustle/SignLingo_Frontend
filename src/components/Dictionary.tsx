@@ -50,8 +50,7 @@ export default function Dictionary() {
       let words: any[] = [];
       let fetched = false;
       const endpoints = [
-        'http://localhost:5002/asl/dictionary/all?limit=2000',
-        'http://localhost:5002/api/v1/asl/dictionary/all?limit=2000',
+        `${import.meta.env.VITE_API_BASE_URL}/asl/dictionary/all?limit=2000`,
       ];
       for (const url of endpoints) {
         try {

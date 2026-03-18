@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { learningAPI } from '../services/api';
 
-const API_URL = 'http://localhost:5002';
+const API_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '') : 'https://signlingo-backend-ei3t.onrender.com';
 
 const ASLVideoViewer = ({ letter }) => {
   const [videoData, setVideoData] = useState(null);

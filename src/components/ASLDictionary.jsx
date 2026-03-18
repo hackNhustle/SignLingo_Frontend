@@ -27,8 +27,7 @@ const ASLDictionary = () => {
       let words = [];
       let fetched = false;
       const endpoints = [
-        'http://localhost:5002/asl/dictionary/all?limit=2000',
-        'http://localhost:5002/api/v1/asl/dictionary/all?limit=2000',
+        `${import.meta.env.VITE_API_BASE_URL}/asl/dictionary/all?limit=2000`,
       ];
       for (const url of endpoints) {
         try {
@@ -269,62 +268,62 @@ const ASLDictionary = () => {
       </div>
     );
   };
-// Video diagnostics and fallback UI
-function ASLVideoPlayer({ videoUrl, word }) {
-  const [error, setError] = useState(false);
-  const [diagnostic, setDiagnostic] = useState('');
-  console.log('ASLVideoPlayer:', { word, videoUrl });
-  if (!videoUrl || videoUrl === '' || typeof videoUrl !== 'string') {
+  // Video diagnostics and fallback UI
+  function ASLVideoPlayer({ videoUrl, word }) {
+    const [error, setError] = useState(false);
+    const [diagnostic, setDiagnostic] = useState('');
+    console.log('ASLVideoPlayer:', { word, videoUrl });
+    if (!videoUrl || videoUrl === '' || typeof videoUrl !== 'string') {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+          <div>Video unavailable for this word (no videoUrl)</div>
+          <div className="text-xs text-red-300">videoUrl: {String(videoUrl)}</div>
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
+          <div>Video unavailable for this word (video error)</div>
+          {diagnostic && <div className="text-xs text-red-300">{diagnostic}</div>}
+          <a
+            href={videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs"
+          >
+            Open video in new tab
+          </a>
+        </div>
+      );
+    }
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
-        <div>Video unavailable for this word (no videoUrl)</div>
-        <div className="text-xs text-red-300">videoUrl: {String(videoUrl)}</div>
-      </div>
+      <video
+        src={videoUrl}
+        controls
+        autoPlay
+        muted
+        playsInline
+        preload="metadata"
+        className="w-full h-full object-contain"
+        onError={e => {
+          setError(true);
+          setDiagnostic('onError: Could not load video.');
+          console.error('Video error', { word, videoUrl, event: e });
+        }}
+        onLoadedData={() => {
+          setDiagnostic('onLoadedData: Video loaded.');
+          console.log('Video loaded', { word, videoUrl });
+        }}
+        onCanPlay={() => {
+          setDiagnostic('onCanPlay: Video can play.');
+          console.log('Video can play', { word, videoUrl });
+        }}
+      >
+        Your browser does not support the video tag.
+      </video>
     );
   }
-  if (error) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-white text-center gap-2">
-        <div>Video unavailable for this word (video error)</div>
-        {diagnostic && <div className="text-xs text-red-300">{diagnostic}</div>}
-        <a
-          href={videoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs"
-        >
-          Open video in new tab
-        </a>
-      </div>
-    );
-  }
-  return (
-    <video
-      src={videoUrl}
-      controls
-      autoPlay
-      muted
-      playsInline
-      preload="metadata"
-      className="w-full h-full object-contain"
-      onError={e => {
-        setError(true);
-        setDiagnostic('onError: Could not load video.');
-        console.error('Video error', { word, videoUrl, event: e });
-      }}
-      onLoadedData={() => {
-        setDiagnostic('onLoadedData: Video loaded.');
-        console.log('Video loaded', { word, videoUrl });
-      }}
-      onCanPlay={() => {
-        setDiagnostic('onCanPlay: Video can play.');
-        console.log('Video can play', { word, videoUrl });
-      }}
-    >
-      Your browser does not support the video tag.
-    </video>
-  );
-}
 
   const displayWords = filteredWords;
 
@@ -365,21 +364,19 @@ function ASLVideoPlayer({ videoUrl, word }) {
           <div className="flex items-center justify-end gap-2">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Grid className="w-5 h-5" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'list'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <List className="w-5 h-5" />
             </button>
