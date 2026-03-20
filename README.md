@@ -1,4 +1,4 @@
-# SignBridge — Frontend
+# SignLingo — Frontend
 
 > An interactive web application for learning and practicing **Indian Sign Language (ISL)** and **American Sign Language (ASL)**, powered by real-time AI recognition models.
 
