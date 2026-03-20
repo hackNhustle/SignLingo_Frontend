@@ -69,11 +69,17 @@ export default function DailyQuest() {
     }
   };
 
-  if (loading || !quiz) {
+  if (loading || !quiz || !Array.isArray(quizData) || !quiz.options) {
     return (
       <div className="flex safe-h-screen w-full flex-col items-center justify-center max-w-md mx-auto bg-background-light dark:bg-background-dark">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         <p className="mt-4 text-slate-600 dark:text-slate-400">Preparing your quest...</p>
+        {!loading && (!Array.isArray(quizData) || !quiz?.options) && (
+          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg max-w-xs text-center text-sm">
+            Failed to load valid quiz data. Please return home or report this issue.
+            <button onClick={() => navigate('/')} className="mt-3 w-full p-2 bg-red-600 text-white rounded hover:bg-red-700">Go Home</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -130,7 +136,7 @@ export default function DailyQuest() {
         </div>
 
         <div className="w-full grid grid-cols-2 gap-2.5 sm:gap-4 mt-1 sm:mt-2">
-          {quiz.options.map((option: string, index: number) => {
+          {Array.isArray(quiz.options) ? quiz.options.map((option: string, index: number) => {
             const isSelected = selectedAnswer === index;
             const isCorrect = index === quiz.correct;
             const showResult = selectedAnswer !== null;
@@ -162,7 +168,7 @@ export default function DailyQuest() {
                 </span>
               </button>
             );
-          })}
+          }) : null}
         </div>
       </main>
 

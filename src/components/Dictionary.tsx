@@ -5,7 +5,7 @@ import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
 import BottomNav from './BottomNav';
 import { motion, useInView } from 'motion/react';
-import axios from 'axios';
+import api from '../services/api';
 import islDictionaryCsv from '../utils/isl_dictionary.csv?raw';
 
 import aslVideoMapping from '../utils/asl_video_mapping.json';
@@ -49,20 +49,14 @@ export default function Dictionary() {
       // 1. Try main endpoint
       let words: any[] = [];
       let fetched = false;
-      const endpoints = [
-        `${import.meta.env.VITE_API_BASE_URL}/asl/dictionary/all?limit=2000`,
-      ];
-      for (const url of endpoints) {
-        try {
-          const res = await axios.get(url);
-          if (res.data && Array.isArray(res.data.words)) {
-            words = res.data.words;
-            fetched = true;
-            break;
-          }
-        } catch (e) {
-          // Try next endpoint
+      try {
+        const res = await api.get('/asl/dictionary/all?limit=2000');
+        if (res.data && Array.isArray(res.data.words)) {
+          words = res.data.words;
+          fetched = true;
         }
+      } catch (e) {
+        // Fallback to local JSON if API fails
       }
       if (!fetched) {
         // 2. Fallback to local JSON

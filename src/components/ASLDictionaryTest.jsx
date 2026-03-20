@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '') : 'https://signlingo-backend-ei3t.onrender.com';
+import api from '../services/api';
 
 const ASLDictionaryTest = () => {
   const [tests, setTests] = useState([
@@ -20,7 +18,7 @@ const ASLDictionaryTest = () => {
     setTests(updatedTests);
 
     try {
-      const response = await axios.get(`${API_URL}${test.endpoint}`);
+      const response = await api.get(test.endpoint);
       console.log(`✓ ${test.name}:`, response.data);
       updatedTests[index].status = 'success';
       updatedTests[index].data = response.data;

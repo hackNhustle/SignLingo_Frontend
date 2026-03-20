@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { Search, BookOpen, Grid, List, Play, Volume2, X } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 import aslVideoMapping from '../utils/asl_video_mapping.json';
 import islDictionaryCsv from '../utils/isl_dictionary.csv?raw';
 
@@ -26,20 +26,14 @@ const ASLDictionary = () => {
       setIsLoading(true);
       let words = [];
       let fetched = false;
-      const endpoints = [
-        `${import.meta.env.VITE_API_BASE_URL}/asl/dictionary/all?limit=2000`,
-      ];
-      for (const url of endpoints) {
-        try {
-          const res = await axios.get(url);
-          if (res.data && Array.isArray(res.data.words)) {
-            words = res.data.words;
-            fetched = true;
-            break;
-          }
-        } catch (e) {
-          // Try next endpoint
+      try {
+        const res = await api.get('/asl/dictionary/all?limit=2000');
+        if (res.data && Array.isArray(res.data.words)) {
+          words = res.data.words;
+          fetched = true;
         }
+      } catch (e) {
+        // Fallback if API fails
       }
       if (!fetched) {
         // Fallback to local JSON
