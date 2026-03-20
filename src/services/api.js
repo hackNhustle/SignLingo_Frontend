@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const MODEL_BASE_URL_KEY = 'sign_model_base_url';
-const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-backend-ei3t.onrender.com/api/v1';
+const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-micro-services-backend-3.onrender.com/api/v1';
 const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://isl-alphabet-detection.onrender.com';
 
 const getStoredModelBaseUrl = () => {
