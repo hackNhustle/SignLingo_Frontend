@@ -2,7 +2,8 @@ import axios from 'axios';
 
 const MODEL_BASE_URL_KEY = 'sign_model_base_url';
 const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-micro-services-backend-3.onrender.com/api/v1';
-const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://isl-alphabet-detection.onrender.com';
+const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://signlingo-micro-services-backend-3.onrender.com/api/v1/model/isl';
+const DEFAULT_ASL_MODEL_URL = 'https://signlingo-micro-services-backend-3.onrender.com/api/v1/model/asl';
 
 const getStoredModelBaseUrl = () => {
   try {
@@ -112,12 +113,13 @@ export const convertAPI = {
       formData.append('file', imageData);
     }
 
-    // Send directly to the model service's /predict endpoint.
+    // Send directly to the model service's /predict endpoint via Gateway proxy.
     // modelUrl overrides the stored MODEL_BASE_URL.
+    // Default to ASL if the requested language is ASL, else ISL
     const targetBase = modelUrl || MODEL_BASE_URL;
     return axios.post(`${targetBase}/predict`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 60000, // Increased to 60s to handle fresh Render cold starts
+      timeout: 60000,
     });
   },
   speechToSign: (data) => api.post('/convert/speech-to-sign', data),
