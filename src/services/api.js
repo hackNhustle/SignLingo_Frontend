@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 const MODEL_BASE_URL_KEY = 'sign_model_base_url';
-const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-micro-services-backend-3.onrender.com/api/v1';
-const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://signlingo-micro-services-backend-3.onrender.com/api/v1/model/isl';
-const DEFAULT_ASL_MODEL_URL = 'https://signlingo-micro-services-backend-3.onrender.com/api/v1/model/asl';
+const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-gateway.onrender.com/api/v1';
+const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://signlingo-gateway.onrender.com/api/v1/model/isl';
+const DEFAULT_ASL_MODEL_URL = 'https://signlingo-gateway.onrender.com/api/v1/model/asl';
 
 const getStoredModelBaseUrl = () => {
   try {
@@ -233,8 +233,8 @@ export const apiHelpers = {
       const isSignRecognitionRequest =
         requestUrl.includes('/model-api/') ||
         requestUrl.includes('/asl-api/') ||
-        requestUrl.includes('isl-alphabet-detection.onrender.com') ||
-        requestUrl.includes('asl-alphabet-detection.onrender.com');
+        requestUrl.includes('isl-alphabet-detection-cwfg.onrender.com') ||
+        requestUrl.includes('asl-alphabet-detection-pxh1.onrender.com');
 
       if (isSignRecognitionRequest && status === 500) {
         const modelLabel = requestUrl.includes('/asl-api/') ? 'ASL' : 'ISL';
@@ -256,8 +256,8 @@ export const apiHelpers = {
       const isSignRecognitionRequest =
         requestUrl.includes('/model-api/') ||
         requestUrl.includes('/asl-api/') ||
-        requestUrl.includes('isl-alphabet-detection.onrender.com') ||
-        requestUrl.includes('asl-alphabet-detection.onrender.com');
+        requestUrl.includes('isl-alphabet-detection-cwfg.onrender.com') ||
+        requestUrl.includes('asl-alphabet-detection-pxh1.onrender.com');
 
       if (isSignRecognitionRequest) {
         const modelLabel = requestUrl.includes('/asl-api/') ? 'ASL' : 'ISL';

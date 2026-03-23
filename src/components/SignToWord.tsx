@@ -4,8 +4,8 @@ import Webcam from "react-webcam";
 import { convertAPI, apiHelpers, getModelBaseUrl, setModelBaseUrl } from '../services/api';
 
 const MODEL_OPTIONS = [
-  { label: 'Cloud ISL Model', value: 'https://isl-alphabet-detection.onrender.com' },
-  { label: 'Cloud ASL Model', value: 'https://asl-alphabet-detection.onrender.com' },
+  { label: 'Cloud ISL Model', value: 'https://isl-alphabet-detection-cwfg.onrender.com' },
+  { label: 'Cloud ASL Model', value: 'https://asl-alphabet-detection-pxh1.onrender.com' },
   { label: 'Local ISL Model', value: '/model-api' },
   { label: 'Local ASL Model', value: '/asl-api' },
 ];

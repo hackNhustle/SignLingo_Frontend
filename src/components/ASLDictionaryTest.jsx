@@ -118,7 +118,7 @@ const ASLDictionaryTest = () => {
               Open ASL Dictionary
             </a>
             <a
-              href={`${import.meta.env.VITE_API_BASE_URL || 'https://signlingo-backend-ei3t.onrender.com/api/v1'}/`}
+              href={`${import.meta.env.VITE_API_BASE_URL || 'https://signlingo-gateway.onrender.com/api/v1'}/`}
               target="_blank"
               rel="noopener noreferrer"
               className="p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-center font-medium"
