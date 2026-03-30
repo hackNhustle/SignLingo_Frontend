@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 const MODEL_BASE_URL_KEY = 'sign_model_base_url';
-const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-gateway.onrender.com/api/v1';
-const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://signlingo-gateway.onrender.com/api/v1/model/isl';
-const DEFAULT_ASL_MODEL_URL = 'https://signlingo-gateway.onrender.com/api/v1/model/asl';
+const DEFAULT_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://signlingo-gateway-xozh.onrender.com/api/v1';
+const DEFAULT_MODEL_BASE_URL = import.meta.env?.VITE_MODEL_BASE_URL || 'https://signlingo-gateway-xozh.onrender.com/api/v1/model/isl';
+const DEFAULT_ASL_MODEL_URL = 'https://signlingo-gateway-xozh.onrender.com/api/v1/model/asl';
 
 const getStoredModelBaseUrl = () => {
   try {
@@ -58,10 +58,33 @@ api.interceptors.response.use(
   }
 );
 
+// Helper to wake up all services (Render free tier)
+const wakeUpServices = () => {
+  const endpoints = [
+    '/health',          // Gateway & Auth Service
+    '/convert',         // Convert Service
+    '/content/health',  // Content Service
+    '/practice/health', // Practice Service
+    '/model/asl',       // ASL Model Service
+    '/model/isl'        // ISL Model Service
+  ];
+
+  endpoints.forEach(path => {
+    // Fire and forget health checks to wake up instances
+    api.get(path).catch(() => {});
+  });
+};
+
 // Authentication API
 export const authAPI = {
-  register: (userData) => api.post('/auth/register', userData),
-  login: (credentials) => api.post('/auth/login', credentials),
+  register: (userData) => {
+    wakeUpServices();
+    return api.post('/auth/register', userData);
+  },
+  login: (credentials) => {
+    wakeUpServices();
+    return api.post('/auth/login', credentials);
+  },
   getRole: () => api.get('/auth/role'),
   getProfile: () => api.get('/user/profile'),
   updateProfile: (data) => api.put('/user/profile', data),
